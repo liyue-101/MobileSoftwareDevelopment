@@ -28,7 +28,7 @@ fun Greeting(name: String) {
 
 参考以下名片设计，使用 Jetpack Compose 构建一个 Android 名片应用：
 
-![图片](/Users/enter/YXNU/课程/专业选修/移动端软件开发/Labs/Lab2/example.png)
+![图片](example.png)
 
 名片分为两个区域：
 
