@@ -1,3 +1,4 @@
+
 # Lab3：Kotlin 进阶语法练习
 
 ## 实验背景
@@ -66,7 +67,6 @@ Your phone is blowing up! You have 99+ notifications.
 **你的答案：**
 
 ```kotlin
-// 请将完整代码粘贴至此
 fun main() {
     val morningNotification = 51
     val eveningNotification = 135
@@ -76,10 +76,11 @@ fun main() {
 }
 
 fun printNotificationSummary(numberOfMessages: Int) {
-    if (numberOfMessages < 100)
-    println("You have $numberOfMessages notifications.")
-    else
-    println("Your phone is blowing up! You have 99+ notifications.")
+    if (numberOfMessages < 100) {
+        println("You have $numberOfMessages notifications.")
+    } else {
+        println("Your phone is blowing up! You have 99+ notifications.")
+    }
 }
 ```
 
@@ -127,7 +128,6 @@ The movie ticket price for a person aged 87 is $20.
 **你的答案：**
 
 ```kotlin
-// 请将完整代码粘贴至此
 fun main() {
     val child = 5
     val adult = 28
@@ -141,12 +141,10 @@ fun main() {
 }
 
 fun ticketPrice(age: Int, isMonday: Boolean): Int {
-    if (age < 0||age > 100){
-        return -1
-    }
-    return when{
+    return when {
+        age < 0 || age > 100 -> -1
         age <= 12 -> 15
-        age in 13..60 -> if(isMonday) 25 else 30
+        age in 13..60 -> if (isMonday) 25 else 30
         else -> 20
     }
 }
@@ -199,28 +197,24 @@ fun printFinalTemperature(
 **你的答案：**
 
 ```kotlin
-// 请将完整代码粘贴至此
-fun main(){
-    printFinalTemperature(27.0,"Celsius","Fahrenheit"){
-        celsius -> 9.0 / 5.0 * celsius + 32
-    }
-    printFinalTemperature(350.0,"Kelvin","Celsius"){
-        kelvin -> kelvin - 273.15
-    }
-    printFinalTemperature(10.0,"Fahrenheit","Kelvin"){
-        fahrenheit -> 5.0 / 9.0 * (fahrenheit - 32) + 273.15
-    }
+fun main() {
+    // 摄氏度 → 华氏度
+    printFinalTemperature(27.0, "Celsius", "Fahrenheit") { c -> 9.0 / 5 * c + 32 }
+    // 开尔文 → 摄氏度
+    printFinalTemperature(350.0, "Kelvin", "Celsius") { k -> k - 273.15 }
+    // 华氏度 → 开尔文
+    printFinalTemperature(10.0, "Fahrenheit", "Kelvin") { f -> 5.0 / 9 * (f - 32) + 273.15 }
 }
+
 fun printFinalTemperature(
     initialMeasurement: Double,
     initialUnit: String,
     finalUnit: String,
     conversionFormula: (Double) -> Double
-    ){
-    val finalMeasurement = String.format("%.2f",conversionFormula(initialMeasurement))
+) {
+    val finalMeasurement = String.format("%.2f", conversionFormula(initialMeasurement))
     println("$initialMeasurement degrees $initialUnit is $finalMeasurement degrees $finalUnit.")
 }
-
 ```
 
 ---
@@ -242,28 +236,27 @@ fun printFinalTemperature(
 **你的答案：**
 
 ```kotlin
-// 请将完整代码粘贴至此
 class Song(
     val title: String,
-    val artist:String,
+    val artist: String,
     val releaseYear: Int,
     val playCount: Int
-
-){
+) {
+    // 流行属性：播放量 >=1000 为流行
     val isPopular: Boolean
-    get() = playCount >= 1000
-    fun  printDescription(){
-        println("$title,performed by $artist,was released in $releaseYear.")
+        get() = playCount >= 1000
+
+    // 输出歌曲介绍
+    fun printDescription() {
+        println("$title, performed by $artist, was released in $releaseYear.")
     }
 }
-fun main(){
-    val popularSong = Song("Love Story","Taylor Swift",2008,2500)
-    popularSong.printDescription()
-    println("是否流行: ${popularSong.isPopular}")
-    println("----------------------")
-    val unpopularSong = Song("Small Song","Unhnown Artist",2024,500)
-    unpopularSong.printDescription()
-    println("是否流行: ${unpopularSong.isPopular}")
+
+// 测试代码
+fun main() {
+    val song = Song("love story", "Adele", 2015, 5000000)
+    song.printDescription()
+    println("Is popular: ${song.isPopular}")
 }
 ```
 
@@ -310,10 +303,9 @@ Likes to climb. Has a referrer named Amanda, who likes to play tennis.
 **你的答案：**
 
 ```kotlin
-// 请将完整代码粘贴至此
 fun main() {
-    val amanda = Person("Amanda", 33, "play tennis", null)
-    val atiqah = Person("Atiqah", 28, "climb", amanda)
+    val amanda = Person("oujiahun", 24, "play tennis", null)
+    val atiqah = Person("wyq", 24, "climb", amanda)
     
     amanda.showProfile()
     atiqah.showProfile()
@@ -323,12 +315,15 @@ class Person(val name: String, val age: Int, val hobby: String?, val referrer: P
     fun showProfile() {
         println("Name: $name")
         println("Age: $age")
-        if (referrer == null) {
-            println("Like to $hobby.Doesn't have a referrer.")
-        } else {
-            println("Like to $hobby.Has a referrer named ${referrer.name},who likes to ${referrer.hobby}")
         
+        val hobbyStr = hobby?.let { "likes to $it" } ?: "has no hobby"
+        val referrerStr = if (referrer == null) {
+            "Doesn't have a referrer."
+        } else {
+            "Has a referrer named ${referrer.name}, who ${referrer.hobby?.let { "likes to $it" } ?: "has no hobby"}."
         }
+        
+        println("Likes to $hobbyStr. $referrerStr\n")
     }
 }
 ```
@@ -367,7 +362,6 @@ open class Phone(var isScreenLightOn: Boolean = false) {
 **你的答案：**
 
 ```kotlin
-// 请将完整代码粘贴至此（包含 Phone 类和你实现的 FoldablePhone 类）
 open class Phone(var isScreenLightOn: Boolean = false) {
     open fun switchOn() {
         isScreenLightOn = true
@@ -382,38 +376,38 @@ open class Phone(var isScreenLightOn: Boolean = false) {
         println("The phone screen's light is $phoneScreenLight.")
     }
 }
-//可折叠手机类，继承自Phone
+
+// 可折叠手机类
 class FoldablePhone : Phone() {
-    //属性：标记手机是否处于折叠状态，默认是折叠状态
-    private var isFolded: Boolean = true
-    //重写开启屏幕方法：只有展开时才能点亮屏幕
+    // 是否折叠
+    var isFolded: Boolean = true
+
+    // 重写开机方法：只有展开才能亮屏
     override fun switchOn() {
         if (!isFolded) {
             isScreenLightOn = true
         }
     }
-    //方法：折叠手机
+
+    // 折叠
     fun fold() {
         isFolded = true
     }
-    //方法：展开手机
+
+    // 展开
     fun unfold() {
         isFolded = false
     }
 }
-//测试代码
+
+// 测试代码
 fun main() {
-    val foldablePhone = FoldablePhone()
-    //测试1：折叠状态按开机键   屏幕不亮
-    foldablePhone.switchOn()
-    foldablePhone.checkPhoneScreenLight()//输出off
-    //测试2：展开手机 再按开机键 屏幕亮
-    foldablePhone.unfold()
-    foldablePhone.switchOn()
-    foldablePhone.checkPhoneScreenLight()//输出on
-    //测试3：再次折叠手机
-    foldablePhone.fold()
-    foldablePhone.checkPhoneScreenLight()//保持on（折叠不影响已亮屏幕）
+    val foldable = FoldablePhone()
+    foldable.switchOn() // 折叠状态 → 不开屏
+    foldable.checkPhoneScreenLight()
+    foldable.unfold()
+    foldable.switchOn() // 展开状态 → 开屏
+    foldable.checkPhoneScreenLight()
 }
 ```
 
@@ -454,7 +448,6 @@ Item B is sold at 3000.
 **你的答案：**
 
 ```kotlin
-// 请将完整代码粘贴至此
 fun main() {
     val winningBid = Bid(5000, "Private Collector")
     
@@ -465,12 +458,8 @@ fun main() {
 class Bid(val amount: Int, val bidder: String)
 
 fun auctionPrice(bid: Bid?, minimumPrice: Int): Int {
-    if(bid != null) {
-        return bid.amount
-    }
-    else {
-        return minimumPrice
-    }
+    // 空安全处理：有出价返回出价，无返回底价
+    return bid?.amount ?: minimumPrice
 }
 ```
 
