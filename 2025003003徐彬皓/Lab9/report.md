@@ -1,165 +1,179 @@
-# Lab7 实验报告
-## 1. 应用整体结构说明
-本次实验构建的课程网格应用采用**分层式结构**组织代码，核心分为数据层、UI 组合项层，整体结构清晰且符合 Compose 开发规范，具体如下：
+# Lab8 实验报告：Superheroes 安卓应用
 
-### （1）数据层
-- **数据类（Topic.kt）**：位于 `com.example.myapplication7.model` 包下，定义 `Topic` 数据类，封装单个课程主题的核心数据（名称资源 ID、课程数量、图片资源 ID），是应用的数据模型基础。
-- **数据源（DataSource.kt）**：位于 `com.example.myapplication7.data` 包下，通过 `object` 单例创建 `topics` 列表，集中管理 24 个课程主题的静态数据，避免数据分散，便于统一维护和复用。
+## 一、应用整体结构说明
+本应用基于 **Android Jetpack Compose + Material 3** 开发，实现一个展示超级英雄信息的列表应用。整体结构清晰，遵循 Android 官方推荐架构：
 
-### （2）UI 组合项层
-- **入口层（MainActivity.kt）**：应用主入口，通过 `setContent` 挂载 Compose 界面，核心是调用顶层组合项 `CoursesApp`。
-- **顶层组合项**：`CoursesApp` 作为界面根组合项，负责调用 `TopicGrid` 并设置网格整体内边距。
-- **网格组合项**：`TopicGrid` 基于 `LazyVerticalGrid` 实现两列可滚动网格，通过 `items` 遍历数据源，为每个 `Topic` 实例渲染 `TopicCard`。
-- **卡片组合项**：`TopicCard` 实现单个课程卡片的布局与样式，是网格的最小 UI 单元，负责将 `Topic` 数据渲染为可视化卡片。
+1. **UI 层**
+   - `MainActivity.kt`：应用入口，负责启动界面
+   - `HeroesScreen.kt`：包含列表、列表项、整体页面布局
+2. **数据层**
+   - `Hero.kt`：英雄数据类
+   - `HeroesRepository.kt`：统一数据源，提供静态英雄列表
+3. **主题层（ui/theme）**
+   - `Color.kt`：颜色配置
+   - `Shape.kt`：形状圆角配置
+   - `Type.kt`：字体与文字样式
+   - `Theme.kt`：主题统一封装
+4. **资源层**
+   - 字符串、图片、字体等资源统一管理
 
-### （3）资源层
-- 字符串资源：`strings.xml` 中定义所有课程主题名称，通过资源 ID 解耦硬编码，支持多语言扩展。
-- 图片资源：`drawable` 目录下存放课程主题图片和装饰图标（`ic_grain.xml`），通过资源 ID 与数据类关联。
+整个应用采用 **数据驱动 UI** 思想，低耦合、易扩展、易维护。
 
-## 2. `Topic` 数据类的字段设计与选择理由
-### 字段设计
+---
+
+## 二、Hero 数据类字段设计与理由
 ```kotlin
-data class Topic(
-    @StringRes val nameResId: Int,
-    val courseCount: Int,
-    @DrawableRes val imageResId: Int
+data class Hero(
+    @StringRes val nameRes: Int,
+    @StringRes val descriptionRes: Int,
+    @DrawableRes val imageRes: Int
 )
 ```
 
-### 选择理由
-| 字段 | 类型/注解 | 选择理由 |
-|------|-----------|----------|
-| `nameResId` | `@StringRes Int` | 采用字符串资源 ID 而非直接存储字符串：<br>1. 符合 Android 资源管理规范，支持多语言适配；<br>2. 避免硬编码字符串，降低维护成本；<br>3. `@StringRes` 注解可让 IDE 校验资源合法性，减少运行时错误。 |
-| `courseCount` | `Int` | 课程数量是纯数字型数据，无需复杂封装，直接使用基本类型 `Int` 即可满足需求，兼顾性能和简洁性。 |
-| `imageResId` | `@DrawableRes Int` | 采用图片资源 ID 而非图片文件路径/位图：<br>1. 利用 Android 资源系统的缓存和适配能力，适配不同分辨率屏幕；<br>2. `@DrawableRes` 注解确保传入的是合法的图片资源 ID，避免无效资源导致的崩溃；<br>3. 资源 ID 是整型常量，占用内存少，便于列表高效渲染。 |
+### 设计字段说明
+1. **nameRes**
+   存储英雄名称的字符串资源 ID，便于国际化与统一管理。
+2. **descriptionRes**
+   存储英雄描述的字符串资源 ID，保持文本资源规范。
+3. **imageRes**
+   存储英雄图片资源 ID，安全、类型安全、便于 Compose 直接加载。
 
-此外，使用 `data class` 而非普通 `class`：  
-- 自动生成 `equals()`、`hashCode()`、`toString()` 等方法，便于数据比较和调试；  
-- 自动生成 `copy()` 方法，便于数据拷贝和修改；  
-- 符合 Kotlin 中“数据承载类”的设计规范，语义更清晰。
+### 设计理由
+- 使用**资源 ID**而非硬编码，符合 Android 资源最佳实践
+- 注解 `@StringRes`/`@DrawableRes` 提供编译期检查，减少错误
+- 数据类简洁轻量，适合列表展示场景
 
-## 3. 卡片布局实现思路
-单个课程卡片（`TopicCard`）采用**多层嵌套组合项**实现，核心思路是“先整体、后局部，先布局、后样式”，具体嵌套结构如下：
+---
 
-### 核心组合项嵌套关系
-```
-Card（卡片容器）
-└── Row（水平排列：图片 + 文字区域）
-    ├── Image（课程主题图片）
-    └── Column（垂直排列：主题名称 + 课程数量行）
-        ├── Text（主题名称）
-        └── Row（水平排列：装饰图标 + 课程数量）
-            ├── Image（ic_grain 装饰图标）
-            ├── Spacer（图标与数字间距）
-            └── Text（课程数量）
-```
-
-### 关键实现细节
-1. **外层容器：Card**  
-   使用 `Card` 作为卡片根容器，设置 `RoundedCornerShape(8.dp)` 实现圆角效果，`fillMaxWidth()` 让卡片占满网格列宽，符合“两列网格”的视觉要求。
-
-2. **水平布局：Row**  
-   卡片内部通过 `Row` 实现“图片 + 文字区域”的水平排列，保证图片居左、文字区域居右的核心布局结构。
-
-3. **图片区域：Image**  
-   - 设置 `size(68.dp)` 固定图片宽高，`aspectRatio(1f)` 确保图片为正方形（适配不同屏幕）；  
-   - `clip(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))` 让图片左上角/左下角与卡片圆角对齐；  
-   - `contentScale = ContentScale.Crop` 保证图片填充容器且不变形。
-
-4. **文字区域：Column**  
-   - `padding(16.dp)` 实现文字区域上下左右 16dp 内边距，符合 UI 规格；  
-   - `align(Alignment.CenterVertically)` 让文字区域在 Row 中垂直居中，与图片高度匹配。
-
-5. **课程数量行：Row**  
-   - `verticalAlignment = Alignment.CenterVertically` 让图标和数字垂直居中；  
-   - `Spacer(Modifier.width(8.dp))` 实现图标与数字之间 8dp 的间距，符合 UI 规格；  
-   - 装饰图标设置 `size(16.dp)`，保证尺寸统一。
-
-6. **文字样式**  
-   - 主题名称：`MaterialTheme.typography.bodyMedium`，符合规格要求；  
-   - 课程数量：`MaterialTheme.typography.labelMedium`，与设计稿一致。
-
-## 4. 网格布局实现思路（`LazyVerticalGrid` 参数配置说明）
-网格布局通过 `LazyVerticalGrid` 实现，核心是配置列数、间距、内边距，确保符合“两列、可滚动、指定间距”的需求，参数配置及说明如下：
-
-### 核心代码
+## 三、HeroesRepository 数据源组织方式
 ```kotlin
-LazyVerticalGrid(
-    columns = GridCells.Fixed(2), // 两列网格
-    modifier = modifier, // 接收外部传入的内边距（8dp）
-    verticalArrangement = Arrangement.spacedBy(8.dp), // 垂直方向卡片间距
-    horizontalArrangement = Arrangement.spacedBy(8.dp) // 水平方向卡片间距
-) {
-    items(topics) { topic ->
-        TopicCard(topic = topic) // 遍历渲染每个卡片
-    }
+object HeroesRepository {
+    val heroes = listOf(...)
 }
 ```
 
-### 参数详解
-| 参数 | 配置值 | 作用 |
-|------|--------|------|
-| `columns` | `GridCells.Fixed(2)` | 指定网格为固定 2 列，是实现“两列网格”的核心参数；`GridCells.Fixed(n)` 表示强制分为 n 列，列宽自动均分可用宽度。 |
-| `modifier` | 外部传入 `Modifier.padding(8.dp)` | 为整个网格设置四周 8dp 的内边距，保证网格与屏幕边缘有间距，符合 UI 规格。 |
-| `verticalArrangement` | `Arrangement.spacedBy(8.dp)` | 控制垂直方向上相邻卡片的间距为 8dp，实现卡片上下间距统一。 |
-| `horizontalArrangement` | `Arrangement.spacedBy(8.dp)` | 控制水平方向上相邻卡片的间距为 8dp，实现卡片左右间距统一。 |
-| `items(topics)` | 遍历 `DataSource.topics` | `LazyVerticalGrid` 是“懒加载”网格，仅渲染当前可见区域的卡片，提升列表滚动性能；`items` 方法接收数据列表，为每个元素生成 `TopicCard`。 |
+### 组织方式
+- 使用 **object 单例类**，全局唯一，无需实例化
+- 使用 `listOf()` 创建不可变列表，线程安全、稳定
+- 集中管理所有英雄数据，便于维护与扩展
+- 直接从资源读取，无网络/数据库依赖
 
-### 关键设计思路
-1. **懒加载特性**：`LazyVerticalGrid` 继承 Compose 懒加载容器的特性，避免一次性渲染 24 个卡片，降低内存占用，提升滚动流畅度。
-2. **间距分层控制**：  
-   - 网格整体内边距（`modifier.padding(8.dp)`）：控制网格与屏幕边缘的距离；  
-   - 卡片间间距（`spacedBy(8.dp)`）：控制卡片之间的距离；  
-   两者结合实现“网格边缘留白 + 卡片间距”的双层间距效果，符合设计稿要求。
-3. **列宽自适应**：`GridCells.Fixed(2)` 让两列宽度自动均分网格可用宽度，适配不同屏幕尺寸，无需手动计算列宽。
+### 优点
+- 数据源与 UI 完全解耦
+- 页面只需调用 `HeroesRepository.heroes` 获取数据
+- 结构简单，适合课程实验静态数据场景
 
-## 5. 遇到的问题与解决过程
-### 问题 1：图片圆角与卡片圆角不匹配
-#### 现象
-卡片设置了整体圆角，但图片仅填充左上角/左下角，右侧圆角被截断，视觉效果不一致。
-#### 原因
-图片默认是矩形，未针对卡片圆角做裁剪，且 `Card` 的圆角不会自动裁剪子元素。
-#### 解决过程
-1. 为 `Image` 添加 `clip(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))` 修饰符，仅裁剪图片的左上角和左下角（与卡片左侧圆角对齐）；  
-2. 确保 `Image` 的圆角半径与 `Card` 一致（8dp），保证视觉统一；  
-3. 验证不同屏幕尺寸下的显示效果，确认圆角无变形。
+---
 
-### 问题 2：网格卡片间距不符合规格
-#### 现象
-网格卡片之间的间距过大/过小，且网格与屏幕边缘无间距。
-#### 原因
-初期仅设置了 `horizontalArrangement` 和 `verticalArrangement`，未设置网格整体内边距；且间距值错误设置为 16dp（规格要求 8dp）。
-#### 解决过程
-1. 在 `CoursesApp` 中调用 `TopicGrid` 时，传入 `Modifier.padding(8.dp)`，为网格添加整体内边距；  
-2. 将 `horizontalArrangement` 和 `verticalArrangement` 的 `spacedBy` 参数改为 8dp；  
-3. 运行应用，通过“布局检查器”（Layout Inspector）验证间距值，确认符合 8dp 规格。
+## 四、英雄列表项布局实现思路
+列表项 `HeroItem` 采用标准 Compose 组件组合实现：
 
-### 问题 3：文字区域垂直居中失效
-#### 现象
-文字区域在 `Row` 中偏上，与图片高度不匹配，视觉上不协调。
-#### 原因
-`Column`（文字区域）未设置垂直居中对齐，默认居顶排列。
-#### 解决过程
-1. 为 `Column` 添加 `Modifier.align(Alignment.CenterVertically)` 修饰符，让文字区域在 `Row` 中垂直居中；  
-2. 调整 `Column` 的内边距（16dp），确保文字区域上下间距对称；  
-3. 预览不同卡片（如课程数量多/少的卡片），确认文字区域始终居中。
+1. **外层卡片**
+   使用 `Card` 组件，设置 `medium` 圆角，提升视觉层次。
+2. **横向布局**
+   使用 `Row` 横向排列：**左侧文字 + 右侧图片**。
+3. **文字区域**
+   使用 `Column` 垂直排列名称与描述。
+4. **图片区域**
+   固定大小 72.dp，设置 8.dp 圆角，保持美观统一。
+5. **间距与对齐**
+   整体高度 72.dp，内边距 16.dp，布局整齐规范。
 
-### 问题 4：LazyVerticalGrid 导入失败
-#### 现象
-IDE 提示无法解析 `LazyVerticalGrid` 和 `GridCells`。
-#### 原因
-项目 Compose 依赖版本过低，未包含 `foundation-lazy-grid` 组件。
-#### 解决过程
-1. 查阅 Compose 官方文档，确认 `LazyVerticalGrid` 属于 `androidx.compose.foundation:foundation-lazy-grid` 库；  
-2. 在项目 `build.gradle`（Module 级别）中升级 Compose 版本至 1.2.0+（支持该组件的最低版本）；  
-3. 同步项目（Sync Project with Gradle Files），验证导入成功。
+### 视觉样式
+- 名称：`displaySmall` 粗体
+- 描述：`bodyLarge` 常规体
+- 图片：居中裁剪，圆角美化
 
-### 问题 5：卡片宽度不一致
-#### 现象
-部分卡片宽度偏窄，两列网格列宽不统一。
-#### 原因
-`TopicCard` 未设置 `fillMaxWidth()`，导致卡片宽度仅包裹内容，而非占满列宽。
-#### 解决过程
-1. 为 `Card` 添加 `Modifier.fillMaxWidth()`，强制卡片占满所在列的宽度；  
-2. 移除 `Row` 中多余的宽度限制修饰符，确保布局层级的宽度传递正常；  
-3. 测试不同屏幕尺寸（手机、平板），确认列宽始终均分。
+---
+
+## 五、LazyColumn 列表实现和间距配置说明
+```kotlin
+LazyColumn(
+    contentPadding = PaddingValues(16.dp),
+    verticalArrangement = Arrangement.spacedBy(8.dp)
+)
+```
+
+### 实现说明
+- 使用 **LazyColumn** 实现高性能滚动列表
+- 只渲染屏幕可见项，适合长列表展示
+- 使用 `items` 方法遍历数据源
+
+### 间距配置
+- `contentPadding = 16.dp`：列表整体四周留白
+- `spacedBy(8.dp)`：列表项之间统一间距，界面整洁
+
+---
+
+## 六、Material 主题配置说明
+应用使用 Material 3 主题体系，统一颜色、文字、形状风格。
+
+### 1. 颜色
+- 配置**浅色/深色**两套配色方案
+- 自动跟随系统模式切换
+- 主色、背景色、文字色符合可读性与设计规范
+
+### 2. 字体
+- 使用 `Cabin` 字体
+- 定义多级文字样式：`displayLarge`、`displaySmall`、`bodyLarge`
+- 顶部栏、标题、内容文字层级清晰
+
+### 3. 形状
+- small：8.dp
+- medium：16.dp（卡片圆角）
+- large：16.dp
+
+统一圆角风格，提升整体视觉一致性。
+
+---
+
+## 七、顶部应用栏和状态栏处理说明
+1. **使用 Scaffold + TopAppBar**
+   构建标准顶部应用栏，结构规范。
+2. **标题居中**
+   文字样式 `displayLarge`，视觉突出。
+3. **颜色使用主题主色**
+   保持整体风格统一。
+4. **状态栏适配**
+   - 状态栏颜色与背景同步
+   - 自动根据深色/浅色模式切换图标亮度
+   - 实现无边栏沉浸式效果
+
+---
+
+## 八、遇到的问题与解决过程
+
+### 问题 1：大量 Unresolved reference 报错
+- **原因**：代码包名与项目实际包名不一致
+- **解决**：统一改为 `com.example.myapplication8`，修正所有导入路径
+
+### 问题 2：字体资源 R.font 找不到
+- **原因**：字体文件名包含大写字母与横杠
+- **解决**：重命名为 `cabin_regular.ttf`、`cabin_bold.ttf`
+
+### 问题 3：SuperheroesTheme 找不到
+- **原因**：缺少 theme 文件夹或文件不完整
+- **解决**：重新创建 Color、Shape、Type、Theme 四个文件
+
+### 问题 4：strings.xml 资源缺失
+- **原因**：未添加 hero1~hero6、description 等资源
+- **解决**：补全所有字符串资源
+
+### 问题 5：@Composable 调用上下文错误
+- **原因**：Composable 函数嵌套不规范
+- **解决**：调整结构，确保主题在 `setContent` 内正确调用
+
+---
+
+## 九、实验总结
+本次实验完成了一个完整的 Compose 列表应用，掌握了以下内容：
+- Jetpack Compose 基础组件使用
+- 数据类与数据源设计
+- LazyColumn 高性能列表实现
+- Material 3 主题体系配置
+- 资源文件规范与使用
+- 常见错误排查方法
+
+应用运行稳定，界面美观，完全符合实验要求。
+
+---
